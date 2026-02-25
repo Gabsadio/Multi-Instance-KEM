@@ -209,7 +209,7 @@ if __name__ == "__main__":
         plt.figure()
         plt.plot(dsruntimes.keys(), dsruntimes.values(), label="DS")
         plt.plot(mmtruntimes.keys(), mmtruntimes.values(), label="MMT")
-        plt.xlabel("$\\log_2$ number of instances")
+        plt.xlabel("$\\log_2$ number of encapsulations")
         plt.ylabel("bit security")
         plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Runtimes")
@@ -219,7 +219,7 @@ if __name__ == "__main__":
         plt.plot(
             list(mmtspeedups.keys())[1:], list(mmtspeedups.values())[1:], label="MMT"
         )
-        plt.xlabel("$M$:$\\log_2$ number of instances")
+        plt.xlabel("$\\log_2$ number of encapsulations")
         plt.ylabel("$\\log_M$ speedups")
         plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Speedups")
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         plt.figure()
         plt.plot(dsmemory.keys(), dsmemory.values(), label="DS")
         plt.plot(mmtmemory.keys(), mmtmemory.values(), label="MMT")
-        plt.xlabel("$\\log_2$ number of instances")
+        plt.xlabel("$\\log_2$ number of encapsulations")
         plt.ylabel("$\\log_2$ memory")
         plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Memory")

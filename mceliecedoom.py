@@ -212,31 +212,29 @@ if __name__ == "__main__":
 
         # Plot the results:
         plt.figure()
-        plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS-DOOM")
-        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT-DOOM")
+        plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS")
+        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
         plt.legend()
-        plt.xlabel("$\\log_2$ number of instances")
+        plt.xlabel("$\\log_2$ number of encapsulations")
         plt.ylabel("bit security")
         plt.savefig(f"Figures/McElieceDOOM/{n}{t}/Runtimes")
 
         plt.figure()
-        plt.plot(
-            list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS-DOOM"
-        )
+        plt.plot(list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS")
         plt.plot(
             list(MMTspeedups.keys())[1:],
             list(MMTspeedups.values())[1:],
-            label="MMT-DOOM",
+            label="MMT",
         )
         plt.legend()
-        plt.xlabel("$M$: $\\log_2$ number of instances")
+        plt.xlabel("$\\log_2$ number of encapsulations")
         plt.ylabel("$\\log_M$ speedups")
         plt.savefig(f"Figures/McElieceDOOM/{n}{t}/Speedups")
 
         plt.figure()
-        plt.plot(DSmemory.keys(), DSmemory.values(), label="DS-DOOM")
-        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT-DOOM")
+        plt.plot(DSmemory.keys(), DSmemory.values(), label="DS")
+        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
         plt.legend()
-        plt.xlabel("$\\log_2$ number of instances")
+        plt.xlabel("$\\log_2$ number of encapsulations")
         plt.ylabel("$\\log_2$ memory")
         plt.savefig(f"Figures/McElieceDOOM/{n}{t}/Memory")
