@@ -207,27 +207,27 @@ if __name__ == "__main__":
 
         # Plot the results:
         plt.figure()
+        plt.xlabel("$\\log_2(M)$")
+        plt.ylabel("$\\log_2$ runtime")
         plt.plot(dsruntimes.keys(), dsruntimes.values(), label="DS")
-        plt.plot(mmtruntimes.keys(), mmtruntimes.values(), label="MMT")
-        plt.xlabel("$\\log_2$ number of encapsulations")
-        plt.ylabel("bit security")
-        plt.legend()
+        # plt.plot(mmtruntimes.keys(), mmtruntimes.values(), label="MMT")
+        # plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Runtimes")
 
         plt.figure()
-        plt.plot(list(dsspeedups.keys())[1:], list(dsspeedups.values())[1:], label="DS")
-        plt.plot(
-            list(mmtspeedups.keys())[1:], list(mmtspeedups.values())[1:], label="MMT"
-        )
-        plt.xlabel("$\\log_2$ number of encapsulations")
+        plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_M$ speedups")
-        plt.legend()
+        plt.plot(list(dsspeedups.keys())[1:], list(dsspeedups.values())[1:], label="DS")
+        # plt.plot(
+        #     list(mmtspeedups.keys())[1:], list(mmtspeedups.values())[1:], label="MMT"
+        # )
+        # plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Speedups")
 
         plt.figure()
-        plt.plot(dsmemory.keys(), dsmemory.values(), label="DS")
-        plt.plot(mmtmemory.keys(), mmtmemory.values(), label="MMT")
-        plt.xlabel("$\\log_2$ number of encapsulations")
+        plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ memory")
-        plt.legend()
+        plt.plot(dsmemory.keys(), dsmemory.values(), label="DS")
+        # plt.plot(mmtmemory.keys(), mmtmemory.values(), label="MMT")
+        # plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Memory")

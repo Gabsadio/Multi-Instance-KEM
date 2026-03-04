@@ -206,29 +206,29 @@ if __name__ == "__main__":
 
         # Plot the results:
         plt.figure()
+        plt.xlabel("$\\log_2(M)$")
+        plt.ylabel("$\\log_2$ runtime")
         plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS")
-        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
-        plt.legend()
-        plt.xlabel("$\\log_2$ number of encapsulations")
-        plt.ylabel("bit security")
+        # plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
+        # plt.legend()
         plt.savefig(f"Figures/HQCDOOM/HQC-{2*j+1}/Runtimes")
 
         plt.figure()
-        plt.plot(list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS")
-        plt.plot(
-            list(MMTspeedups.keys())[1:],
-            list(MMTspeedups.values())[1:],
-            label="MMT",
-        )
-        plt.legend()
-        plt.xlabel("$\\log_2$ number of encapsulations")
+        plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_M$ speedups")
+        plt.plot(list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS")
+        # plt.plot(
+        #     list(MMTspeedups.keys())[1:],
+        #     list(MMTspeedups.values())[1:],
+        #     label="MMT",
+        # )
+        # plt.legend()
         plt.savefig(f"Figures/HQCDOOM/HQC-{2*j+1}/Speedups")
 
         plt.figure()
-        plt.plot(DSmemory.keys(), DSmemory.values(), label="DS")
-        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
-        plt.legend()
-        plt.xlabel("$\\log_2$ number of encapsulations")
+        plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ memory")
+        plt.plot(DSmemory.keys(), DSmemory.values(), label="DS")
+        # plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
+        # plt.legend()
         plt.savefig(f"Figures/HQCDOOM/HQC-{2*j+1}/Memory")
