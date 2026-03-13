@@ -5,33 +5,54 @@ from numpy import seterr
 
 
 def dsDOOM(n, k, w, M: int):
+    """
+    Bit complexities for DS-DOOM
+
+    :param n: Code length
+    :param k: Dimension of the code
+    :param w: Weight of the error vector
+    :param M: Number of syndromes
+
+    :returns best_time: Lowest log2 runtime complexity found
+    :returns mem: log2 memory requirements for best runtime
+    :returns params: Parameters of DS-DOOM used to achieve best_time
+    """
     seterr(over="raise")
     nw = log2(comb(n, w))
-    m = log2(M)
-    em = m + max(0, nw - n + k)  # expected number of solutions
     best_time = float("inf")
     mem = None
-    params = None, None, None, None
+    params = None, None, None, None, None
     for p in range(w + 1):
         try:
+            # Parameter l that balances list sizes
             l_best = root_scalar(
                 lambda x: x - (log2(M * binom(k + x, p))) / 2,
                 bracket=(max(0, p - k), n - k - w + p),
             ).root
-
             l = round(l_best)
-            if comb(k + l, p) < M:
-                continue  # Balancing not possible
+            MM = M
 
-            # Cost of partial Gaussian elimination:
-            gauss = log2(max(1, (n - k - l) * (n - k) * (n + M)))
+            while comb(k + l, p) < MM:
+                # Balancing not possible, take fewer instances
+                MM = comb(k + l, p)
+                l_best = root_scalar(
+                    lambda x: x - (log2(MM * binom(k + x, p))) / 2,
+                    bracket=(max(0, p - k), n - k - w + p),
+                ).root
+                l = round(l_best)
 
             # Distribution factor to balance initial lists:
             r = root_scalar(
                 lambda x: log2(binom((1 - x) * (k + l), (1 - x) * p))
-                - log2(M * binom(x * (k + l), x * p)),
+                - log2(MM * binom(x * (k + l), x * p)),
                 bracket=(0, 1 / 2),
             ).root
+
+            mm = log2(MM)
+            em = mm + max(0, nw - n + k)  # expected number of solutions
+
+            # Cost of partial Gaussian elimination:
+            gauss = log2((n - k - l) * (n - k) * (n + MM))
 
             # Work with the nearest integers:
             p_ = round(r * p)
@@ -42,23 +63,28 @@ def dsDOOM(n, k, w, M: int):
             right = comb(kl_, p_)
             left = comb(k + l - kl_, p - p_)
 
-            # log2 probability of good permutation for fixedd solution:
+            # log2 probability of good permutation for fixed solution:
             alpha = log2(comb(n - k - l, w - p) * left * right) - nw
 
             # List sizes:
             L1 = log2(left)
-            L2 = log2(right * M)
-            L = log2(left * right * M) - l
+            L2 = log2(right * MM)
+            L = log2(left * right * MM) - l
 
             # Costs:
-            time = -min(0, em + alpha) + max(gauss, L1, L2, L)
+            time = -min(0, em + alpha) + max(
+                gauss,
+                L1 + log2((k + l) * l),
+                L2 + log2((k + l) * l),
+                L + log2((k + l) + (n - k - l) * (k + l)),
+            )
             if time < best_time:
                 best_time = time
                 mem = max(
-                    log2((n - k) * (n + M)),  # Parity-Check matrix + syndromes
+                    log2((n - k) * (n + MM)),  # Parity-Check matrix + syndromes
                     min(L1, L2) + log2(max(1, l)),  # Hashmap for join
                 )
-                params = p, l, p_, kl_
+                params = mm, p, l, p_, kl_
         except:
             continue
 
@@ -66,6 +92,18 @@ def dsDOOM(n, k, w, M: int):
 
 
 def mmtDOOM(n, k, w, M: int):
+    """
+    Bit complexities for MMT-DOOM
+
+    :param n: Code length
+    :param k: Dimension of the code
+    :param w: Weight of the error vector
+    :param M: Number of syndromes
+
+    :returns best_time: Lowest log2 runtime complexity found
+    :returns mem: log2 memory requirements for best runtime
+    :returns params: Parameters of MMT-DOOM used to achieve best_time
+    """
     seterr(over="raise")
     nw = log2(comb(n, w))
     best_time = float("inf")
@@ -75,7 +113,7 @@ def mmtDOOM(n, k, w, M: int):
         for l in range(max(0, p - k), n - k - w + p + 1):
             try:
                 ## Distribution factors:
-                # If L4 only syndromes, i.e. r = 0:
+                # If L4 only syndromes, i.e. r = 0, balance the first three lists:
                 p_ = root_scalar(
                     lambda x: log2(binom((k + l) / 2, (p - x) / 2))
                     - log2(binom((k + l) / 2, x / 2)) * 2,
@@ -104,7 +142,7 @@ def mmtDOOM(n, k, w, M: int):
                         bracket=(0, 1 / 2),
                     ).root
                 else:
-                    # Balancing not fully possible:
+                    # Balancing not possible, take fewer instances:
                     MM = floor(bound)
                     r = 0
 
@@ -112,7 +150,7 @@ def mmtDOOM(n, k, w, M: int):
                 em = mm + max(0, nw - n + k)  # expected number of solutions
 
                 # Runtime for initial partial gaussian elimination:
-                gauss = log2(max(1, (n - k - l) * (n - k) * (n + MM)))
+                gauss = log2((n - k - l) * (n - k) * (n + MM))
 
                 # probability of good permutation for single instance:
                 klhalf = round((k + l) / 2)
@@ -143,6 +181,8 @@ def mmtDOOM(n, k, w, M: int):
 
                 # Number of bits to match on level 1:
                 b = floor(min(l, max(0, mm + alpha) + reps - 2))
+                if MM > 1:
+                    b = floor(min(l, max(0, mm + alpha) + reps - 1))
                 if b < 1:
                     continue
 
@@ -162,7 +202,16 @@ def mmtDOOM(n, k, w, M: int):
                 L = log2(ls1 * ls2 * ls3 * ls4 * MM) - l - b
 
                 # Runtime:
-                time = -min(0, em + alpha) + max(gauss, L1, L2, L3, L4, L12, L34, L)
+                time = -min(0, em + alpha) + max(
+                    gauss,
+                    L1 + log2((k + l) * l),
+                    L2 + log2((k + l) * l),
+                    L3 + log2((k + l) * l),
+                    L4 + log2((k + l) * l),
+                    L12 + log2(k + l),
+                    L34 + log2(k + l),
+                    L + log2((k + l) + (n - k - l) * (k + l)),
+                )
                 if time < best_time:
                     best_time = time
                     mem = max(

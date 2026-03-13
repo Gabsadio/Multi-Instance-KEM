@@ -15,18 +15,20 @@ if __name__ == "__main__":
 
         # Single-instance:
         print("Single instance:\nDS: ", end="")
-        time, mem, (p, l, p_, kl_) = dsDOOM(2 * r, r - 1, t, 1 * r)
+        time, mem, (mm, p, l, p_, kl_) = dsDOOM(2 * r, r - 1, t, 1 * r)
         print(time, "\nMMT: ", end="")
-        timemmt, memmmt, (mm, pmmt, lmmt, b, rkl, p_mmt, rp_) = mmtDOOM(
+        timemmt, memmmt, (mmmmt, pmmt, lmmt, b, rkl, p_mmt, rp_) = mmtDOOM(
             2 * r, r - 1, t, 1 * r
         )
         print(timemmt)
 
-        instanceRange = range(int(3 / 4 * max(time, timemmt)))
+        # A little more than 2/3*log2(T_1) to make sure we get to the minimal time
+        instanceRange = range(int(3 / 4 * max(time, timemmt) - log2(r)))
+
         dsruntimes = dict((i, time) for i in instanceRange)
         dsspeedups = dict((i, float(0)) for i in instanceRange)
         dsmemory = dict((i, mem) for i in instanceRange)
-        dssyndromesUsed = dict((i, i + log2(r)) for i in instanceRange)
+        dssyndromesUsed = dict((i, mm) for i in instanceRange)
         dsparameters_p = dict((i, p) for i in instanceRange)
         dsparameters_l = dict((i, l) for i in instanceRange)
         dsparameters_p_ = dict((i, p_) for i in instanceRange)
@@ -34,7 +36,7 @@ if __name__ == "__main__":
         mmtruntimes = dict((i, timemmt) for i in instanceRange)
         mmtspeedups = dict((i, float(0)) for i in instanceRange)
         mmtmemory = dict((i, memmmt) for i in instanceRange)
-        mmtsyndromesUsed = dict((i, mm) for i in instanceRange)
+        mmtsyndromesUsed = dict((i, mmmmt) for i in instanceRange)
         mmtparameters_p = dict((i, pmmt) for i in instanceRange)
         mmtparameters_l = dict((i, lmmt) for i in instanceRange)
         mmtparameters_b = dict((i, b) for i in instanceRange)
@@ -44,7 +46,7 @@ if __name__ == "__main__":
 
         # Multi-instance:
         print("Multi-Instance:")
-        with Pool(processes=cpu_count()) as pool:
+        with Pool(processes=min(64, cpu_count())) as pool:
             input = [(2 * r, r - 1, t, (1 << i) * r) for i in instanceRange[1:]]
             print("DS:")
             dsresults = list(tqdm(pool.istarmap(dsDOOM, input), total=len(input)))
@@ -56,6 +58,7 @@ if __name__ == "__main__":
                 dsruntimes[i],
                 dsmemory[i],
                 (
+                    dssyndromesUsed[i],
                     dsparameters_p[i],
                     dsparameters_l[i],
                     dsparameters_p_[i],
@@ -210,24 +213,26 @@ if __name__ == "__main__":
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ runtime")
         plt.plot(dsruntimes.keys(), dsruntimes.values(), label="DS")
-        # plt.plot(mmtruntimes.keys(), mmtruntimes.values(), label="MMT")
-        # plt.legend()
+        plt.plot(mmtruntimes.keys(), mmtruntimes.values(), label="MMT")
+        plt.legend()
+        y = 143 * (j == 0) + 207 * (j == 1) + 272 * (j == 2)
+        plt.axhline(y, color="tab:gray", ls="--")
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Runtimes")
 
         plt.figure()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_M$ speedups")
         plt.plot(list(dsspeedups.keys())[1:], list(dsspeedups.values())[1:], label="DS")
-        # plt.plot(
-        #     list(mmtspeedups.keys())[1:], list(mmtspeedups.values())[1:], label="MMT"
-        # )
-        # plt.legend()
+        plt.plot(
+            list(mmtspeedups.keys())[1:], list(mmtspeedups.values())[1:], label="MMT"
+        )
+        plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Speedups")
 
         plt.figure()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ memory")
         plt.plot(dsmemory.keys(), dsmemory.values(), label="DS")
-        # plt.plot(mmtmemory.keys(), mmtmemory.values(), label="MMT")
-        # plt.legend()
+        plt.plot(mmtmemory.keys(), mmtmemory.values(), label="MMT")
+        plt.legend()
         plt.savefig(f"Figures/BIKEDOOM/BIKE-{2*j+1}/Memory")

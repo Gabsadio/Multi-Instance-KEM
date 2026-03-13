@@ -2,6 +2,7 @@ from doom import dsDOOM, mmtDOOM
 from math import log2
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+import istarmap
 from multiprocessing.pool import Pool
 from multiprocessing import cpu_count
 
@@ -14,18 +15,20 @@ if __name__ == "__main__":
 
         # Single-instance:
         print("Single-instance:\nDS: ", end="")
-        timeds, memds, (pds, lds, p_ds, kl_ds) = dsDOOM(2 * n, n - 2, 2 * w, n)
+        timeds, memds, (mmds, pds, lds, p_ds, kl_ds) = dsDOOM(2 * n, n - 2, 2 * w, n)
         print(timeds, "\nMMT: ", end="")
         timemmt, memmmt, (mmmmt, pmmt, lmmt, bmmt, rkl, p_mmt, rp_) = mmtDOOM(
             2 * n, n - 2, 2 * w, n
         )
         print(timemmt)
 
+        # A little more than 2/3*log2(T_1) to make sure we get to the minimal time
         instanceRange = range(int(3 / 4 * max(timeds, timemmt) - log2(n)))
+
         DSruntimes = dict((i, timeds) for i in instanceRange)
         DSspeedups = dict((i, float(0)) for i in instanceRange)
         DSmemory = dict((i, memds) for i in instanceRange)
-        DSsyndromesUsed = dict((i, i + log2(n)) for i in instanceRange)
+        DSsyndromesUsed = dict((i, mmds) for i in instanceRange)
         DSparameters_p = dict((i, pds) for i in instanceRange)
         DSparameters_l = dict((i, lds) for i in instanceRange)
         DSparameters_p_ = dict((i, p_ds) for i in instanceRange)
@@ -55,6 +58,7 @@ if __name__ == "__main__":
                 DSruntimes[i],
                 DSmemory[i],
                 (
+                    DSsyndromesUsed[i],
                     DSparameters_p[i],
                     DSparameters_l[i],
                     DSparameters_p_[i],
@@ -209,24 +213,26 @@ if __name__ == "__main__":
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ runtime")
         plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS")
-        # plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
-        # plt.legend()
+        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
+        plt.legend()
+        y = 143 * (j == 0) + 207 * (j == 1) + 272 * (j == 2)
+        plt.axhline(y, color="tab:gray", ls="--")
         plt.savefig(f"Figures/HQCCommonCode/HQC-{2*j+1}/Runtimes")
 
         plt.figure()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_M$ speedups")
         plt.plot(list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS")
-        # plt.plot(
-        #     list(MMTspeedups.keys())[1:], list(MMTspeedups.values())[1:], label="MMT"
-        # )
-        # plt.legend()
+        plt.plot(
+            list(MMTspeedups.keys())[1:], list(MMTspeedups.values())[1:], label="MMT"
+        )
+        plt.legend()
         plt.savefig(f"Figures/HQCCommonCode/HQC-{2*j+1}/Speedups")
 
         plt.figure()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ memory")
         plt.plot(DSmemory.keys(), DSmemory.values(), label="DS")
-        # plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
-        # plt.legend()
+        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
+        plt.legend()
         plt.savefig(f"Figures/HQCCommonCode/HQC-{2*j+1}/Memory")

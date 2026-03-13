@@ -22,16 +22,20 @@ if __name__ == "__main__":
 
         # Single-instance:
         print("Single-instance:\nDS: ", end="")
-        timeds, memds, (pds, lds, p_ds, kl_ds) = dsDOOM(n, k - 1, t, 1)
+        timeds, memds, (mmds, pds, lds, p_ds, kl_ds) = dsDOOM(n, k - 1, t, 1)
         print(timeds, "\nMMT: ", end="")
-        timemmt, memmmt, (mm, pmmt, lmmt, b, rkl, p_mmt, rp_) = mmtDOOM(n, k - 1, t, 1)
+        timemmt, memmmt, (mmmmt, pmmt, lmmt, b, rkl, p_mmt, rp_) = mmtDOOM(
+            n, k - 1, t, 1
+        )
         print(timemmt)
 
+        # A little more than 2/3*log2(T_1) to make sure we get to the minimal time
         instanceRange = range(int(3 / 4 * max(timeds, timemmt)))
+
         DSruntimes = dict((i, timeds) for i in instanceRange)
         DSspeedups = dict((i, float(0)) for i in instanceRange)
         DSmemory = dict((i, memds) for i in instanceRange)
-        DSsyndromesUsed = dict((i, i) for i in instanceRange)
+        DSsyndromesUsed = dict((i, mmds) for i in instanceRange)
         DSparameters_p = dict((i, pds) for i in instanceRange)
         DSparameters_l = dict((i, lds) for i in instanceRange)
         DSparameters_p1 = dict((i, p_ds) for i in instanceRange)
@@ -39,7 +43,7 @@ if __name__ == "__main__":
         MMTruntimes = dict((i, timemmt) for i in instanceRange)
         MMTspeedups = dict((i, float(0)) for i in instanceRange)
         MMTmemory = dict((i, memmmt) for i in instanceRange)
-        MMTsyndromesUsed = dict((i, mm) for i in instanceRange)
+        MMTsyndromesUsed = dict((i, mmmmt) for i in instanceRange)
         MMTparameters_p = dict((i, pmmt) for i in instanceRange)
         MMTparameters_l = dict((i, lmmt) for i in instanceRange)
         MMTparameters_b = dict((i, b) for i in instanceRange)
@@ -49,7 +53,7 @@ if __name__ == "__main__":
 
         # Multi-instance:
         print("Multi-Instance:")
-        with Pool(processes=cpu_count()) as pool:
+        with Pool(processes=min(64, cpu_count())) as pool:
             input = [(n, k - 1, t, 1 << i) for i in instanceRange[1:]]
             print("DS:")
             DSresults = list(tqdm(pool.istarmap(dsDOOM, input), total=len(input)))
@@ -61,6 +65,7 @@ if __name__ == "__main__":
                 DSruntimes[i],
                 DSmemory[i],
                 (
+                    DSsyndromesUsed[i],
                     DSparameters_p[i],
                     DSparameters_l[i],
                     DSparameters_p1[i],
@@ -215,26 +220,32 @@ if __name__ == "__main__":
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ runtime")
         plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS")
-        # plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
-        # plt.legend()
+        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
+        plt.legend()
+        y = (
+            143 * (f"{n}{t}" == "348864")
+            + 207 * (f"{n}{t}" == "460896")
+            + 272 * (f"{n}{t}" in ["6688128", "6960119", "8192128"])
+        )
+        plt.axhline(y, color="tab:gray", ls="--")
         plt.savefig(f"Figures/McElieceDOOM/{n}{t}/Runtimes")
 
         plt.figure()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_M$ speedups")
         plt.plot(list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS")
-        # plt.plot(
-        #     list(MMTspeedups.keys())[1:],
-        #     list(MMTspeedups.values())[1:],
-        #     label="MMT",
-        # )
-        # plt.legend()
+        plt.plot(
+            list(MMTspeedups.keys())[1:],
+            list(MMTspeedups.values())[1:],
+            label="MMT",
+        )
+        plt.legend()
         plt.savefig(f"Figures/McElieceDOOM/{n}{t}/Speedups")
 
         plt.figure()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ memory")
         plt.plot(DSmemory.keys(), DSmemory.values(), label="DS")
-        # plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
-        # plt.legend()
+        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
+        plt.legend()
         plt.savefig(f"Figures/McElieceDOOM/{n}{t}/Memory")
