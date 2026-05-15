@@ -6,33 +6,29 @@ import istarmap
 from multiprocessing.pool import Pool
 from multiprocessing import cpu_count
 
-
 if __name__ == "__main__":
-    plt.style.use("bmh")
     hqc_parameters = [(17669, 66), (35851, 100), (57637, 131)]
     for j, (n, w) in enumerate(hqc_parameters):
         print(f"HQC-{2*j+1} ...")
-
-        # Single-instance:
-        print("Single-instance:\nDS: ", end="")
-        timeds, memds, (mmds, pds, lds, p_ds, kl_ds) = dsDOOM(2 * n, n - 2, 2 * w, n)
-        print(timeds, "\nMMT: ", end="")
-        timemmt, memmmt, (mmmmt, pmmt, lmmt, bmmt, rkl, p_mmt, rp_) = mmtDOOM(
+        # Single-Instance:
+        print("Single-Instance:\nDS: ", end="")
+        timeds, memds, (mmds, pds, lds, rds) = dsDOOM(2 * n, n - 2, 2 * w, n)
+        print(timeds)
+        print("MMT: ", end="")
+        timemmt, memmmt, (mmmmt, pmmt, lmmt, bmmt, p_, rmmt) = mmtDOOM(
             2 * n, n - 2, 2 * w, n
         )
         print(timemmt)
 
         # A little more than 2/3*log2(T_1) to make sure we get to the minimal time
         instanceRange = range(int(3 / 4 * max(timeds, timemmt) - log2(n)))
-
         DSruntimes = dict((i, timeds) for i in instanceRange)
         DSspeedups = dict((i, float(0)) for i in instanceRange)
         DSmemory = dict((i, memds) for i in instanceRange)
         DSsyndromesUsed = dict((i, mmds) for i in instanceRange)
         DSparameters_p = dict((i, pds) for i in instanceRange)
         DSparameters_l = dict((i, lds) for i in instanceRange)
-        DSparameters_p_ = dict((i, p_ds) for i in instanceRange)
-        DSparameters_kl_ = dict((i, kl_ds) for i in instanceRange)
+        DSparameters_r = dict((i, rds) for i in instanceRange)
         MMTruntimes = dict((i, timemmt) for i in instanceRange)
         MMTspeedups = dict((i, float(0)) for i in instanceRange)
         MMTmemory = dict((i, memmmt) for i in instanceRange)
@@ -40,17 +36,14 @@ if __name__ == "__main__":
         MMTparameters_p = dict((i, pmmt) for i in instanceRange)
         MMTparameters_l = dict((i, lmmt) for i in instanceRange)
         MMTparameters_b = dict((i, bmmt) for i in instanceRange)
-        MMTparameters_rkl = dict((i, rkl) for i in instanceRange)
-        MMTparameters_p_ = dict((i, p_mmt) for i in instanceRange)
-        MMTparameters_rp_ = dict((i, rp_) for i in instanceRange)
+        MMTparameters_p_ = dict((i, p_) for i in instanceRange)
+        MMTparameters_r = dict((i, rmmt) for i in instanceRange)
 
-        # Multi-instance:
-        print("Multi-instance:")
+        # Multi-Instance:
+        print("Multi-Instance:")
         with Pool(processes=min(64, cpu_count())) as pool:
             input = [(2 * n, n - 2, 2 * w, n * (1 << i)) for i in instanceRange[1:]]
-            print("DS:")
             DSresults = list(tqdm(pool.istarmap(dsDOOM, input), total=len(input)))
-            print("MMT:")
             MMTresults = list(tqdm(pool.istarmap(mmtDOOM, input), total=len(input)))
 
         for i in instanceRange[1:]:
@@ -61,8 +54,7 @@ if __name__ == "__main__":
                     DSsyndromesUsed[i],
                     DSparameters_p[i],
                     DSparameters_l[i],
-                    DSparameters_p_[i],
-                    DSparameters_kl_[i],
+                    DSparameters_r[i],
                 ),
             ) = DSresults[i - 1]
             if DSruntimes[i] > DSruntimes[i - 1]:
@@ -71,8 +63,7 @@ if __name__ == "__main__":
                 DSsyndromesUsed[i] = DSsyndromesUsed[i - 1]
                 DSparameters_p[i] = DSparameters_p[i - 1]
                 DSparameters_l[i] = DSparameters_l[i - 1]
-                DSparameters_p_[i] = DSparameters_p_[i - 1]
-                DSparameters_kl_[i] = DSparameters_kl_[i - 1]
+                DSparameters_r[i] = DSparameters_r[i - 1]
             DSspeedups[i] = (DSruntimes[0] - DSruntimes[i]) / i
 
             (
@@ -83,9 +74,8 @@ if __name__ == "__main__":
                     MMTparameters_p[i],
                     MMTparameters_l[i],
                     MMTparameters_b[i],
-                    MMTparameters_rkl[i],
                     MMTparameters_p_[i],
-                    MMTparameters_rp_[i],
+                    MMTparameters_r[i],
                 ),
             ) = MMTresults[i - 1]
             if MMTruntimes[i] > MMTruntimes[i - 1]:
@@ -95,9 +85,8 @@ if __name__ == "__main__":
                 MMTparameters_p[i] = MMTparameters_p[i - 1]
                 MMTparameters_l[i] = MMTparameters_l[i - 1]
                 MMTparameters_b[i] = MMTparameters_b[i - 1]
-                MMTparameters_rkl[i] = MMTparameters_rkl[i - 1]
                 MMTparameters_p_[i] = MMTparameters_p_[i - 1]
-                MMTparameters_rp_[i] = MMTparameters_rp_[i - 1]
+                MMTparameters_r[i] = MMTparameters_r[i - 1]
             MMTspeedups[i] = (MMTruntimes[0] - MMTruntimes[i]) / i
 
         # Save the results in a file:
@@ -140,13 +129,8 @@ if __name__ == "__main__":
                 + "\n"
             )
             file.write(
-                "p_                    :\t"
-                + "\t".join(f"{entry:20d}" for entry in DSparameters_p_.values())
-                + "\n"
-            )
-            file.write(
-                "rkl                   :\t"
-                + "\t".join(f"{entry:20d}" for entry in DSparameters_kl_.values())
+                "r                     :\t"
+                + "\t".join(f"{entry:20.16f}" for entry in DSparameters_r.values())
                 + "\n"
             )
 
@@ -193,46 +177,48 @@ if __name__ == "__main__":
                 + "\n"
             )
             file.write(
-                "rkl                   :\t"
-                + "\t".join(f"{entry:20d}" for entry in MMTparameters_rkl.values())
-                + "\n"
-            )
-            file.write(
                 "p_                    :\t"
-                + "\t".join(f"{entry:20d}" for entry in MMTparameters_p_.values())
+                + "\t".join(f"{entry:20.16f}" for entry in MMTparameters_p_.values())
                 + "\n"
             )
             file.write(
-                "rp_                   :\t"
-                + "\t".join(f"{entry:20d}" for entry in MMTparameters_rp_.values())
+                "r                     :\t"
+                + "\t".join(f"{entry:20.16f}" for entry in MMTparameters_r.values())
                 + "\n"
             )
 
         # Plot the results:
+        plt.style.use("bmh")
+        plt.rcParams.update({"backend": "pgf", "pgf.texsystem": "pdflatex"})
+
         plt.figure()
-        plt.xlabel("$\\log_2(M)$")
-        plt.ylabel("$\\log_2$ runtime")
-        plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS")
-        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT")
-        plt.legend()
+        plt.plot(DSruntimes.keys(), DSruntimes.values(), label="DS-DOOM")
+        plt.plot(MMTruntimes.keys(), MMTruntimes.values(), label="MMT-DOOM")
         y = 143 * (j == 0) + 207 * (j == 1) + 272 * (j == 2)
         plt.axhline(y, color="tab:gray", ls="--")
+        plt.legend()
+        plt.xlabel("$\\log_2(M)$")
+        plt.ylabel("$\\log_2$ runtime")
         plt.savefig(f"Figures/HQCCommonCode/HQC-{2*j+1}/Runtimes")
 
         plt.figure()
-        plt.xlabel("$\\log_2(M)$")
-        plt.ylabel("$\\log_M$ speedups")
-        plt.plot(list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS")
         plt.plot(
-            list(MMTspeedups.keys())[1:], list(MMTspeedups.values())[1:], label="MMT"
+            list(DSspeedups.keys())[1:], list(DSspeedups.values())[1:], label="DS-DOOM"
+        )
+        plt.plot(
+            list(MMTspeedups.keys())[1:],
+            list(MMTspeedups.values())[1:],
+            label="MMT-DOOM",
         )
         plt.legend()
+        plt.xlabel("$\\log_2(M)$")
+        plt.ylabel("$\\log_M$ speedups")
         plt.savefig(f"Figures/HQCCommonCode/HQC-{2*j+1}/Speedups")
 
         plt.figure()
+        plt.plot(DSmemory.keys(), DSmemory.values(), label="DS-DOOM")
+        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT-DOOM")
+        plt.legend()
         plt.xlabel("$\\log_2(M)$")
         plt.ylabel("$\\log_2$ memory")
-        plt.plot(DSmemory.keys(), DSmemory.values(), label="DS")
-        plt.plot(MMTmemory.keys(), MMTmemory.values(), label="MMT")
-        plt.legend()
         plt.savefig(f"Figures/HQCCommonCode/HQC-{2*j+1}/Memory")
