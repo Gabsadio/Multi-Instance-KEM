@@ -1,7 +1,10 @@
 from math import log2, comb, floor
 from scipy.optimize import root_scalar
 from scipy.special import binom
-from numpy import seterr
+from numpy import seterr, logaddexp2
+
+# Probability that a random binary matrix is invertible (lower bound):
+matInvProb = 0.28
 
 
 def dsDOOM(n, k, w, M: int):
@@ -21,12 +24,12 @@ def dsDOOM(n, k, w, M: int):
     nw = log2(comb(n, w))
     best_time = float("inf")
     mem = None
-    params = None, None, None, None, None
+    params = None, None, None, None  # mm,p,l,r
     for p in range(w + 1):
         try:
-            # Parameter l that balances list sizes
+            # Parameter l that balances (asymptotic) list sizes
             l_best = root_scalar(
-                lambda x: x - (log2(M * binom(k + x, p))) / 2,
+                lambda x: x - (log2(M) + log2(binom(k + x, p))) / 2,
                 bracket=(max(0, p - k), n - k - w + p),
             ).root
             l = round(l_best)
@@ -36,23 +39,24 @@ def dsDOOM(n, k, w, M: int):
                 # Balancing not possible, take fewer instances
                 MM = comb(k + l, p)
                 l_best = root_scalar(
-                    lambda x: x - (log2(MM * binom(k + x, p))) / 2,
+                    lambda x: x - (log2(MM) + log2(binom(k + x, p))) / 2,
                     bracket=(max(0, p - k), n - k - w + p),
                 ).root
                 l = round(l_best)
 
-            # Distribution factor to balance initial lists:
-            r = root_scalar(
-                lambda x: log2(binom((1 - x) * (k + l), (1 - x) * p))
-                - log2(MM * binom(x * (k + l), x * p)),
-                bracket=(0, 1 / 2),
-            ).root
-
             mm = log2(MM)
             em = mm + max(0, nw - n + k)  # expected number of solutions
 
-            # Cost of partial Gaussian elimination:
-            gauss = log2((n - k - l) * (n - k) * (n + MM))
+            # Distribution factor to balance initial lists:
+            r = root_scalar(
+                lambda x: log2(binom((1 - x) * (k + l), (1 - x) * p))
+                - mm
+                - log2(binom(x * (k + l), x * p)),
+                bracket=(0, 1 / 2),
+            ).root
+
+            # Cost of initial transformation:
+            gauss = log2(n + (n - k - l) * (n - k) * (n + MM)) - log2(matInvProb)
 
             # Work with the nearest integers:
             p_ = round(r * p)
@@ -72,19 +76,20 @@ def dsDOOM(n, k, w, M: int):
             L = log2(left * right * MM) - l
 
             # Costs:
-            time = -min(0, em + alpha) + max(
-                gauss,
-                L1 + log2((k + l) * l),
-                L2 + log2((k + l) * l),
-                L + log2((k + l) + (n - k - l) * (k + l)),
-            )
+            enum = log2(left * (k + l) * l)
+            enum = logaddexp2(enum, L2 + log2((k + l + 1) * l))
+            enum = logaddexp2(enum, L + log2((k + l) + (n - k - l) * (k + l)))
+            time = -min(0, em + alpha) + logaddexp2(gauss, enum)
             if time < best_time:
                 best_time = time
                 mem = max(
-                    log2((n - k) * (n + MM)),  # Parity-Check matrix + syndromes
-                    min(L1, L2) + log2(max(1, l)),  # Hashmap for join
+                    log2((n - k) * (n + MM)),  # Initial transformation
+                    logaddexp2(
+                        log2((n - k) * (k + l + MM)),  # P1, P2 & syndromes
+                        min(L1, L2) + log2(max(1, l)),  # Hashmap for join
+                    ),  # Enumeration
                 )
-                params = mm, p, l, p_, kl_
+                params = mm, p, l, r
         except:
             continue
 
@@ -108,7 +113,7 @@ def mmtDOOM(n, k, w, M: int):
     nw = log2(comb(n, w))
     best_time = float("inf")
     mem = None
-    params = (None, None, None, None, None, None, None)
+    params = None, None, None, None, None, None  # mm,p,l,b,p_,r
     for p in range(w + 1):
         for l in range(max(0, p - k), n - k - w + p + 1):
             try:
@@ -129,8 +134,8 @@ def mmtDOOM(n, k, w, M: int):
                     MM = M
                     p_ = root_scalar(
                         lambda x: log2(binom((k + l) / 2, (p - x) / 2))
-                        - log2(MM * binom(k + l, x)) / 2,
-                        bracket=(0, p / 2),
+                        - (log2(MM) + log2(binom(k + l, x))) / 2,
+                        bracket=(p_, p / 2),
                     ).root
 
                     r = root_scalar(
@@ -138,7 +143,8 @@ def mmtDOOM(n, k, w, M: int):
                             binom((k + l) / 2, p_ / 2)
                             * binom((1 / 2 - x) * (k + l), (1 / 2 - x) * p_)
                         )
-                        - log2(MM * binom(x * (k + l), x * p_)),
+                        - log2(MM)
+                        - log2(binom(x * (k + l), x * p_)),
                         bracket=(0, 1 / 2),
                     ).root
                 else:
@@ -149,8 +155,8 @@ def mmtDOOM(n, k, w, M: int):
                 mm = log2(MM)
                 em = mm + max(0, nw - n + k)  # expected number of solutions
 
-                # Runtime for initial partial gaussian elimination:
-                gauss = log2((n - k - l) * (n - k) * (n + MM))
+                # Cost of Initial Transformation:
+                gauss = log2(n + (n - k - l) * (n - k) * (n + MM)) - log2(matInvProb)
 
                 # probability of good permutation for single instance:
                 klhalf = round((k + l) / 2)
@@ -201,28 +207,23 @@ def mmtDOOM(n, k, w, M: int):
 
                 L = log2(ls1 * ls2 * ls3 * ls4 * MM) - l - b
 
-                # Runtime:
-                time = -min(0, em + alpha) + max(
-                    gauss,
-                    L1 + log2((k + l) * l),
-                    L2 + log2((k + l) * l),
-                    L3 + log2((k + l) * l),
-                    L4 + log2((k + l) * l),
-                    L12 + log2(k + l),
-                    L34 + log2(k + l),
-                    L + log2((k + l) + (n - k - l) * (k + l)),
-                )
+                # Costs:
+                enum = log2((ls1 + ls2 + ls3 + ls4 * MM) * (k + l) * l)
+                lvl1 = logaddexp2(L12, L34) + log2(k + l)
+                enum = logaddexp2(enum, lvl1)
+                enum = logaddexp2(enum, L + log2((k + l) + (n - k - l) * (k + l)))
+                time = -min(0, em + alpha - 1) + logaddexp2(gauss, enum)
                 if time < best_time:
                     best_time = time
                     mem = max(
-                        log2((n - k) * (n + MM)),  # parity-check matrix + syndromes
-                        min(
-                            max(max(min(L1, L2), L12), min(L3, L4)),
-                            max(max(min(L3, L4), L34), min(L1, L2)),
-                        )
-                        + log2(max(1, l)),  # Hash-Joins
+                        log2((n - k) * (n + MM)),  # Initial transformation
+                        logaddexp2(
+                            log2((n - k) * (k + l + MM)),
+                            logaddexp2(max(min(L1, L2), min(L3, L4)), min(L12, L34))
+                            + log2(max(1, l)),
+                        ),  # Enumeration
                     )
-                    params = mm, p, l, b, rkl, round(p_), rp_
+                    params = mm, p, l, b, p_, r
 
             except:
                 continue
