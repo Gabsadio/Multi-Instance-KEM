@@ -3,7 +3,7 @@
 This repository contains the additional material of the paper "Multi-Instance Security Degradation of Code-Based KEMs" by Alexander May and Gabriel Sá Diogo.
 
 - Cryptology ePrint Archive: <https://eprint.iacr.org/2026/517>
-- SCN 2026: (to be added)
+- SCN 2026: <https://doi.org/10.1007/978-3-032-36264-3_24>
 
 ## Structure of This Repository
 
